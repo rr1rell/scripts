@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Проверка количества аргументов
+if [ $# -ne 2 ]; then
+    echo "Ошибка: Необходимо указать 2 аргумента"
+    echo "Использование: ./builder.sh <github-репозиторий> <dockerhub-репозиторий>"
+    echo "Пример: ./builder.sh mluukkai/express_app mluukkai/testing"
+    exit 1
+fi
+
+# Переменные
+GITHUB_REPO=$1
+DOCKER_REPO=$2
+TEMP_DIR="temp_$(date +%s)"
+
+# Цвета для вывода
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}========================================${NC}"
+echo -e "${YELLOW}🚀 Docker Image Builder Script${NC}"
+echo -e "${YELLOW}========================================${NC}"
+echo -e "📦 GitHub репозиторий: ${GREEN}$GITHUB_REPO${NC}"
+echo -e "🐳 Docker Hub репозиторий: ${GREEN}$DOCKER_REPO${NC}"
+echo ""
+
+# Шаг 1: Клонирование репозитория
+echo -e "${YELLOW}[1/4] Клонирование репозитория...${NC}"
+/usr/bin/git clone "https://github.com/$GITHUB_REPO.git" "$TEMP_DIR"
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Ошибка: Не удалось клонировать репозиторий${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Репозиторий успешно склонирован${NC}"
+
+# Переход в директорию проекта
+cd "$TEMP_DIR"
+
+# Шаг 2: Проверка наличия Dockerfile
+echo -e "${YELLOW}[2/4] Проверка Dockerfile...${NC}"
+if [ ! -f "Dockerfile" ]; then
+    echo -e "${RED}❌ Ошибка: Dockerfile не найден в корне репозитория${NC}"
+    cd ..
+    rm -rf "$TEMP_DIR"
+    exit 1
+fi
+echo -e "${GREEN}✅ Dockerfile найден${NC}"
+
+# Шаг 3: Сборка Docker образа
+echo -e "${YELLOW}[3/4] Сборка Docker образа...${NC}"
+docker build -t "$DOCKER_REPO:latest" .
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Ошибка: Не удалось собрать Docker образ${NC}"
+    cd ..
+    rm -rf "$TEMP_DIR"
+    exit 1
+fi
+echo -e "${GREEN}✅ Docker образ успешно собран${NC}"
+
+# Шаг 4: Публикация на Docker Hub
+echo -e "${YELLOW}[4/4] Публикация на Docker Hub...${NC}"
+docker push "$DOCKER_REPO:latest"
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Ошибка: Не удалось опубликовать образ на Docker Hub${NC}"
+    echo -e "${YELLOW}💡 Убедитесь, что вы выполнили 'docker login'${NC}"
+    cd ..
+    rm -rf "$TEMP_DIR"
+    exit 1
+fi
+echo -e "${GREEN}✅ Образ успешно опубликован на Docker Hub${NC}"
+
+# Очистка временной директории
+cd ..
+rm -rf "$TEMP_DIR"
+
+echo -e "${G
+сссссссссREEN}========================================${NC}"
+echo -e "${GREEN}✅ Готово!${NC}"
+echo -e "${GREEN}📦 Образ: $DOCKER_REPO:latest${NC}"
+echo -e "${GREEN}🐳 Просмотр: https://hub.docker.com/r/$DOCKER_REPO${NC}"
+echo -e "${GREEN}========================================${NC}"
